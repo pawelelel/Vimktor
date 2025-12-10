@@ -30,10 +30,20 @@ typedef struct positionStruct {
   int32_t y;
   positionStruct() : x(0), y(0) {}
   positionStruct(uint32_t x, uint32_t y) : x(x), y(y) {}
-  inline operator std::string() { return std::format("x: {}, y: {}", x, y); }
-  positionStruct(const positionStruct &other) {
+  positionStruct(positionStruct &&other) {
     x = other.x;
     y = other.y;
+  }
+  positionStruct(positionStruct &other) {
+    x = other.x;
+    y = other.y;
+  }
+  inline operator std::string() { return std::format("x: {}, y: {}", x, y); }
+
+  inline positionStruct &operator=(positionStruct &&other) {
+    x = other.x;
+    y = other.y;
+    return *this;
   }
 
   inline positionStruct &operator=(positionStruct &other) {

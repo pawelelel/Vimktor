@@ -46,13 +46,10 @@ public:
 
   std::string GetModeStr() const;
 
-
-
-  //file exploring
+  // file exploring
   VimktorErr_t ExplorePath();
-  VimktorErr_t ExplorePath(const std::string& path_str);
+  VimktorErr_t ExplorePath(const std::string &path_str);
   VimktorErr_t OpenFileCursor();
-
 
   // variables
   WINDOW *m_window;

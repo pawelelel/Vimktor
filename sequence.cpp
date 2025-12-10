@@ -247,7 +247,8 @@ VimktorErr_t Sequence::CursorPosValid() {
 }
 
 void Sequence::InsertCharCursor(const glyph_t &gl) {
-  if(Size() == 0)data.emplace_back();
+  if (Size() == 0)
+    data.emplace_back();
   const auto itr = data[m_cursorPos.y].begin() + m_cursorPos.x;
   data[m_cursorPos.y].insert(itr, gl);
   CursorMove(RIGHT);
@@ -361,6 +362,11 @@ VimktorErr_t Sequence::CursorManagePagePos() {
 VimktorErr_t Sequence::LoadCurrentDirectory() {
   data.clear();
   auto path = std::filesystem::current_path();
+
+  // load special directories
+  AddLine("../");
+  AddLine("./");
+
   for (auto const &dir : std::filesystem::directory_iterator{path}) {
     AddLine(dir.path().filename());
   }

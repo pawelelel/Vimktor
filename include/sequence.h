@@ -89,10 +89,10 @@ public:
 
   void AddCharTo(const position_t &pos);
 
-   VimktorErr_t LoadCurrentDirectory();
-	/*
-    ------Cursor Text Editing-------
-   */
+  VimktorErr_t LoadCurrentDirectory();
+  /*
+------Cursor Text Editing-------
+*/
   void InsertCharCursor(const glyph_t &gl); // insserts char in cursros position
   void ReplaceCharCursor(const glyph_t &gl); // replaces char in cursros
                                              // position cursor

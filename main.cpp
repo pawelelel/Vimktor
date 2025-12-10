@@ -3,8 +3,7 @@
 #include <expected>
 #include <iostream>
 
-int main(int argc,  char** argv){
-
+int main(int argc, char **argv) {
   Vimktor app = Vimktor();
   if (argc > 1) {
     std::string fileName;
@@ -15,10 +14,3 @@ int main(int argc,  char** argv){
   app.Loop();
   app.End();
 }
-
-
-
-
-
-
-

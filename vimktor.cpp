@@ -181,7 +181,6 @@ VimktorErr_t Vimktor::HandleEvents(VimktorEvent_t event) {
     break;
   case EV_FILE_EXPLORER:
     WriteFile();
-    m_mode = FILES;
     ExplorePath();
     break;
   case EV_ENTER_CURSOR_DIRECTORY:
@@ -303,12 +302,15 @@ std::string Vimktor::GetModeStr() const {
 }
 
 VimktorErr_t Vimktor::ExplorePath() {
-
+  m_sequence.m_cursorPos = position_t(0, 0);
+  m_mode = FILES;
   HelperLog(std::filesystem::current_path().string());
   m_sequence.LoadCurrentDirectory();
 }
 
 VimktorErr_t Vimktor::ExplorePath(const std::string &path_str) {
+  m_sequence.m_cursorPos = position_t(0, 0);
+  m_mode = FILES;
   std::filesystem::current_path(path_str);
   HelperLog(std::filesystem::current_path().string());
   m_sequence.LoadCurrentDirectory();
@@ -316,8 +318,11 @@ VimktorErr_t Vimktor::ExplorePath(const std::string &path_str) {
 
 VimktorErr_t Vimktor::OpenFileCursor() {
   auto path = std::filesystem::current_path();
-  std::string path_str = path.string() + m_sequence.GetStringCursor();
-  if (std::filesystem::is_directory(path_str)) {
+
+  std::string path_str = path.string() + '/' + m_sequence.GetStringCursor();
+  if (std::filesystem::is_directory(path_str) ||
+      m_sequence.GetStringCursor() == "../" ||
+      m_sequence.GetStringCursor() == "./") {
     ExplorePath(path_str);
   } else {
     LoadFile(m_sequence.GetStringCursor());
