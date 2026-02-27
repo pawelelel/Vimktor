@@ -21,6 +21,9 @@ cd build
 ./Vimktor [file you want to edit]
 ```
 
+### Windows
+Just try to do some magic with [mingw](https://www.mingw-w64.org/)
+
 
 ### Keymaps
 "W" -> Jump to another word \
