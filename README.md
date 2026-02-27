@@ -1,12 +1,14 @@
 # Vimktor
 
 ### What is it ?
-Vimktor is simple Vim-like text editor written in c++. Vimktor provides fast, memory efficient and efective text editing enviorment
+Vimktor is simple Vim-like text editor written in c++. Vimktor provides fast, memory efficient and efective text editing enviorment \
+This is semi-official windows fork.
 
 ## How to build ?
 ### Dependencies
-- cmake
-- curses
+- cmake (linux)
+- curses (linux)
+- [pcl and pac libraries](https://github.com/pawelelel/pcl) (windows)
 
 
 ### Linux
@@ -33,4 +35,4 @@ cd build
 "q" -> quit
 
 ### Known bugs and issues
-Wszystko jest tip-top dopóki jest, jak nie jest, to nie jest.
+So basically, it compiles and runs, but nothing else more works.
