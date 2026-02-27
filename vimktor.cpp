@@ -4,30 +4,53 @@
 #include "include/sequence.h"
 #include "include/vimktor_debug.h"
 #include <cassert>
-#include <cstdint>
 #include <cstdio>
-#include <curses.h>
 #include <cwchar>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <string>
 
-const uint HELPER_HEIGHT = 2;
-const uint LINE_NUM_WIDTH = 5;
+#ifdef PLATFORM_WINDOWS
+#include "pcl/pcl.h"
+#elif PLATFORM_LINUX
+#include <curses.h>
+#endif
+
+const unsigned int HELPER_HEIGHT = 2;
+const unsigned int LINE_NUM_WIDTH = 5;
 
 void Vimktor::Init() {
   InitCurses();
-  int w, h;
+  unsigned int w, h;
+#ifdef PLATFORM_WINDOWS
+  getsize(console, &w, &h);
+#elif PLATFORM_LINUX
   getmaxyx(m_window, h, w);
+#endif
   m_sequence.SetPageDimensions(w - LINE_NUM_WIDTH, h - HELPER_HEIGHT);
   Debug::Log(std::format("max win w: {} , h{}", w, h));
+#ifdef PLATFORM_WINDOWS
+  refreshascii(console, m_window);
+#elif PLATFORM_LINUX
   wrefresh(m_window);
+#endif
 }
 
-void Vimktor::End() { endwin(); }
+void Vimktor::End() {
+#ifdef PLATFORM_WINDOWS
+  end(console);
+#elif PLATFORM_LINUX
+  endwin();
+#endif
+}
 
 VimktorErr_t Vimktor::InitCurses() {
+#ifdef PLATFORM_WINDOWS
+  console = start();
+  m_window = initascii(console);
+  setinputblock(console, FALSE);
+#elif PLATFORM_LINUX
   initscr();
   m_window = stdscr;
   keypad(m_window, TRUE);
@@ -38,6 +61,7 @@ VimktorErr_t Vimktor::InitCurses() {
   noecho();
   curs_set(1);
   init_color(COLOR, 0, 0, 0);
+#endif
   return VIMKTOR_OK;
 }
 
@@ -50,27 +74,47 @@ VimktorErr_t Vimktor::RenderWindow() {
   RenderLineNumber();
   RenderHelper();
   RenderCursor();
+
+#ifdef PLATFORM_WINDOWS
+  refreshascii(console, m_window);
+#elif PLATFORM_LINUX
   wrefresh(m_window);
+#endif
+
   return VIMKTOR_OK;
 }
 
 VimktorErr_t Vimktor::RenderLineNumber() {
   size_t first_nr = m_sequence.m_pagePos.y;
   size_t height = m_sequence.GetPageDimensions().y;
-  for (uint y = 0; y < height; y++) {
+  for (unsigned int y = 0; y < height; y++) {
     if (first_nr + y >= m_sequence.Size()) {
-
+#ifdef PLATFORM_WINDOWS
+      setstringcursorascii(m_window, (char*)"    ", y, 1);
+#elif PLATFORM_LINUX
       mvwprintw(m_window, y, 1, "    ");
-    } else
+#endif
+    } else {
+#ifdef PLATFORM_WINDOWS
+      setstringcursorascii(m_window, (char*)"    ", y, 1);
+      setstringformattedcursorascii(m_window, y, 1, "%ud", first_nr + y + 1);
+#elif PLATFORM_LINUX
       mvwprintw(m_window, y, 1, "%u", first_nr + y + 1);
-  }
+#endif
+    }
 
-  return VIMKTOR_OK;
+    return VIMKTOR_OK;
+  }
 }
 
 VimktorErr_t Vimktor::RenderCursor() {
   position_t cursor = m_sequence.GetRelativeCursorPos();
+
+#ifdef PLATFORM_WINDOWS
+  // todo implement
+#elif PLATFORM_LINUX
   wmove(m_window, cursor.y, cursor.x + LINE_NUM_WIDTH);
+#endif
 
   return VIMKTOR_OK;
 }
@@ -81,7 +125,14 @@ VimktorErr_t Vimktor::RenderHelper() {
   size_t x = endPoint.x - 6;
   size_t y = endPoint.y - HELPER_HEIGHT;
   // print cursor position
-  Debug::Log(std::format("endpoint {}  x: {}", (std::string)endPoint, x));
+  // todo fix
+  //Debug::Log(std::format("endpoint {}  x: {}", (std::string)endPoint, x));
+
+#ifdef PLATFORM_WINDOWS
+  setstringcursorascii(m_window,  "     ", y, x);
+  setstringformattedcursorascii(m_window, y, x, "%ud:%d", cursorPos.y, cursorPos.x);
+  setstringformattedcursorascii(m_window, y, 1, "%s  %s lines: %ud ", GetModeStr().c_str(), m_filename.c_str(), m_sequence.Size());
+#elif PLATFORM_LINUX
   mvwprintw(m_window, y, x, "     ");
 
   mvwprintw(m_window, y, x, "%u:%d", cursorPos.y, cursorPos.x);
@@ -89,6 +140,9 @@ VimktorErr_t Vimktor::RenderHelper() {
   // print activ mode and file name
   mvwprintw(m_window, y, 1, "%s  %s lines: %u ", GetModeStr().c_str(),
             m_filename.c_str(), m_sequence.Size());
+#endif
+
+
   return VIMKTOR_OK;
 }
 
@@ -98,13 +152,21 @@ VimktorErr_t Vimktor::RenderText(uint16_t x, uint16_t y, uint16_t width,
   for (uint16_t i_y = y; i_y < height; i_y++) {
     for (uint16_t i_x = x; i_x < width; i_x++) {
 
+#ifdef PLATFORM_WINDOWS
+#elif PLATFORM_LINUX
       wmove(m_window, i_y, i_x);
+#endif
+
+      char place = ' ';
       if (m_sequence.GetGlyphAtRel(i_x - x, i_y).has_value()) {
         const auto *temp = m_sequence.GetGlyphAtRel(i_x - x, i_y).value();
-        waddch(m_window, temp->ch);
-      } else {
-        waddch(m_window, ' ');
+        place = temp->ch;
       }
+#ifdef PLATFORM_WINDOWS
+      setcharascii(m_window, place);
+#elif PLATFORM_LINUX
+      waddch(m_window, place);
+#endif
     }
   }
   // TODO: add colors
@@ -112,7 +174,11 @@ VimktorErr_t Vimktor::RenderText(uint16_t x, uint16_t y, uint16_t width,
   return VIMKTOR_OK;
 }
 VimktorErr_t Vimktor::GetInput() {
+#ifdef PLATFORM_WINDOWS
+  VimktorEvent_t event = InputManager::Get().GetEvent(console, m_mode);
+#elif PLATFORM_LINUX
   VimktorEvent_t event = InputManager::Get().GetEvent(m_window, m_mode);
+#endif
   HandleEvents(event);
   return VIMKTOR_OK;
 }
@@ -195,16 +261,35 @@ VimktorErr_t Vimktor::HandleCommands() {
 
   char16_t ch;
 
+#ifdef PLATFORM_WINDOWS
+  setinputblock(console, FALSE);
+#elif PLATFORM_LINUX
   nodelay(m_window, 0);
+#endif
   while (1) {
     HelperLog(":" + cmd);
+#ifdef PLATFORM_WINDOWS
+    refreshascii(console, m_window);
+    ch = getchr(console);
+#elif PLATFORM_LINUX
     wrefresh(m_window);
     ch = wgetch(m_window);
+#endif
+
+
     if (ch == KEY_ESCAPE || ch == 13 || ch == KEY_ENTER) {
+#ifdef PLATFORM_WINDOWS
+      setinputblock(console, TRUE);
+#elif PLATFORM_LINUX
       nodelay(m_window, 1);
+#endif
       // ch = wgetch(m_window);
       break;
+#ifdef PLATFORM_WINDOWS
+      refreshascii(console, m_window);
+#elif PLATFORM_LINUX
       wrefresh(stdscr);
+#endif
     }
     if (ch == KEY_BACKSPACE) {
       if (cmd.size() > 0)
@@ -214,11 +299,19 @@ VimktorErr_t Vimktor::HandleCommands() {
       cmd.push_back(ch);
     }
   }
+#ifdef PLATFORM_WINDOWS
+  setinputblock(console, FALSE);
+#elif PLATFORM_LINUX
   nodelay(m_window, 0);
+#endif
 
   // nodelay(m_window, 1);
   HelperLog("                                           ");
+#ifdef PLATFORM_WINDOWS
+  refreshascii(console, m_window);
+#elif PLATFORM_LINUX
   wrefresh(stdscr);
+#endif
   if (commandList.contains(cmd)) {
     HandleEvents(commandList[cmd]);
   }
@@ -278,16 +371,29 @@ void Vimktor::Loop() {
 }
 
 position_t Vimktor::GetEditorDimensions() {
+
+#ifdef PLATFORM_WINDOWS
+  unsigned int width, height;
+  getsize(console, &width, &height);
+  return position_t(width, height);
+#elif PLATFORM_LINUX
   return position_t(getmaxx(m_window), getmaxy(m_window));
+#endif
 }
 
 void Vimktor::HelperLog(const std::string &msg) {
   position_t endPoint = GetEditorDimensions();
   size_t y = endPoint.y - 1;
   size_t x = 0;
+
+#ifdef PLATFORM_WINDOWS
+  setstringformattedcursorascii(m_window, y, x, "%s", msg.c_str());
+#elif PLATFORM_LINUX
   wmove(m_window, y, x);
   clrtoeol();
   mvwprintw(m_window, y, x, "%s", msg.c_str());
+#endif
+
 }
 
 Vimktor::CommandList_t Vimktor::commandList = {

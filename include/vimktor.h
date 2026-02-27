@@ -1,22 +1,32 @@
 #include "common.h"
-#include "curses.h"
-#include "input_manager.h"
 #include "sequence.h"
-#include <cstdint>
-#include <expected>
-#include <fstream>
 #include <memory>
-#include <tuple>
 #include <unordered_map>
+
+#ifdef PLATFORM_WINDOWS
+#include "pcl.h"
+#elif PLATFORM_LINUX
+#include "curses.h"
+#endif
 
 class Vimktor {
   // methods
 public:
   typedef std::unordered_map<std::string, VimktorEvent_t> CommandList_t;
 
+#ifdef PLATFORM_WINDOWS
+  Vimktor() : m_mode(NORMAL) {
+    console = start();
+    m_window = initascii(console);
+  }
+  Vimktor(AsciiScreen *window, std::fstream &file) : m_window(window), m_mode(NORMAL) {}
+#elif PLATFORM_LINUX
   Vimktor() : m_window(stdscr), m_mode(NORMAL) {}
   Vimktor(WINDOW *window, std::fstream &file)
       : m_window(window), m_mode(NORMAL) {}
+#endif
+
+
 
   inline Vimktor(std::string &fileName) { LoadFile(fileName); }
 
@@ -52,7 +62,13 @@ public:
   VimktorErr_t OpenFileCursor();
 
   // variables
-  WINDOW *m_window;
+
+#ifdef PLATFORM_WINDOWS
+  AsciiScreen * m_window;
+  Console * console;
+#elif PLATFORM_LINUX
+	WINDOW *m_window;
+#endif
   Sequence m_sequence;
   VimktorMode_t m_mode;
 

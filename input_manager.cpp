@@ -1,12 +1,20 @@
-
 #include "include/input_manager.h"
 #include "include/common.h"
-#include "include/vimktor_debug.h"
-#include <format>
-#include <ncurses.h>
 
+#ifdef PLATFORM_WINDOWS
+#include  "pcl/pcl.h"
+#elif PLATFORM_LINUX
+#include <ncurses.h>
+#endif
+
+
+#ifdef PLATFORM_WINDOWS
+VimktorEvent_t InputManager::GetEvent(Console *win, VimktorMode_t mode) {
+  inputCh = getchr(win);
+#elif PLATFORM_LINUX
 VimktorEvent_t InputManager::GetEvent(WINDOW *win, VimktorMode_t mode) {
   inputCh = wgetch(win);
+#endif
   if (inputCh == -1)
     return EV_NONE;
   if (inputCh == 0xffffffff)
@@ -16,17 +24,21 @@ VimktorEvent_t InputManager::GetEvent(WINDOW *win, VimktorMode_t mode) {
     return GetInputNormal(win);
     break;
   case VimktorMode_t::INSERT:
-    return GetInputInsert(win);
+#ifdef PLATFORM_WINDOWS
+      return GetInputInsert(win);
+#elif PLATFORM_LINUX
+      return GetInputInsert();
+#endif
     break;
   case VimktorMode_t::FILES:
-    return GetInputFileExp(win);
+    return GetInputFileExp();
     break;
   default:
     return VimktorEvent_t::EV_NONE;
     break;
   }
 }
-VimktorEvent_t InputManager::GetInputFileExp(WINDOW *win) {
+VimktorEvent_t InputManager::GetInputFileExp() {
 
   VimktorEvent_t event = EV_NONE;
   switch (inputCh) {
@@ -64,10 +76,16 @@ VimktorEvent_t InputManager::GetInputFileExp(WINDOW *win) {
   return event;
 }
 
-VimktorEvent_t InputManager::GetInputInsert(WINDOW *win) {
-
+#ifdef PLATFORM_WINDOWS
+VimktorEvent_t InputManager::GetInputInsert(Console *console) {
+  VimktorEvent_t event = EV_NONE;
+  event = IsEscapePressed(console);
+#elif PLATFORM_LINUX
+VimktorEvent_t InputManager::GetInputInsert() {
   VimktorEvent_t event = EV_NONE;
   event = IsEscapePressed();
+#endif
+
   if (event != EV_NONE)
     return event;
   switch (inputCh) {
@@ -97,8 +115,12 @@ VimktorEvent_t InputManager::GetInputInsert(WINDOW *win) {
   }
 };
 
-VimktorEvent_t InputManager::GetInputNormal(WINDOW *win) {
 
+#ifdef PLATFORM_WINDOWS
+VimktorEvent_t InputManager::GetInputNormal(Console *win) {
+#elif PLATFORM_LINUX
+VimktorEvent_t InputManager::GetInputNormal(WINDOW *win) {
+#endif
   VimktorEvent_t event = EV_NONE;
   if (inputCh > '1' && inputCh < '9') {
   }
@@ -164,6 +186,17 @@ VimktorEvent_t InputManager::GetInputNormal(WINDOW *win) {
   return event;
 };
 
+#ifdef PLATFORM_WINDOWS
+VimktorEvent_t InputManager::IsEscapePressed(Console *console) {
+  if (inputCh == KEY_ESCAPE) {
+    setinputblock(console, TRUE);
+    char n = getchr(console);
+    setinputblock(console, FALSE);
+    return EV_MODE_NORMAL;
+  }
+  return EV_NONE;
+}
+#elif PLATFORM_LINUX
 VimktorEvent_t InputManager::IsEscapePressed() {
   if (inputCh == KEY_ESCAPE) {
     nodelay(stdscr, 1);
@@ -173,17 +206,26 @@ VimktorEvent_t InputManager::IsEscapePressed() {
   }
   return EV_NONE;
 }
+#endif
 
+
+#ifdef PLATFORM_WINDOWS
+VimktorEvent_t InputManager::HandleDeleteEvent(Console *console) {
+  uint16_t nextOp = getchr(console);
+#elif PLATFORM_LINUX
 VimktorEvent_t InputManager::HandleDeleteEvent(WINDOW *win) {
-
   uint16_t nextOp = wgetch(win);
-
+#endif
   switch (nextOp) {
   case 'd':
     return EV_ERASE_LINE;
     break;
   default:
-    if (IsEscapePressed() != EV_NONE)
+#ifdef PLATFORM_WINDOWS
+      if (IsEscapePressed(console) != EV_NONE)
+#elif PLATFORM_LINUX
+      if (IsEscapePressed() != EV_NONE)
+#endif
       return EV_NONE;
   }
   return EV_NONE;

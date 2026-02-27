@@ -3,7 +3,6 @@
 #include "include/vimktor_debug.h"
 #include "vimktor_debug.cpp"
 #include <assert.h>
-#include <cstdio>
 #include <expected>
 #include <filesystem>
 #include <format>
@@ -141,7 +140,8 @@ void Sequence::ManageLastPos(position_t &backUp) {
   // make sure line exist
   //
   //
-  Debug::Log(std::format("cursor before{}", (std::string)backUp));
+  // todo fix
+  //Debug::Log(std::format("cursor before{}", (std::string)backUp));
 
   if (m_cursorPos.x < 0) {
     m_cursorPos.x = 0;
@@ -171,7 +171,9 @@ void Sequence::ManageLastPos(position_t &backUp) {
     if (m_cursorPos.x < 0)
       m_cursorPos.x = 0;
   }
-  Debug::Log(std::format("cursor after{}", (std::string)m_cursorPos));
+
+  // todo fiz
+  //Debug::Log(std::format("cursor after{}", (std::string)m_cursorPos));
   return;
 }
 
@@ -367,8 +369,8 @@ VimktorErr_t Sequence::LoadCurrentDirectory() {
   AddLine("../");
   AddLine("./");
 
-  for (auto const &dir : std::filesystem::directory_iterator{path}) {
-    AddLine(dir.path().filename());
+  for (std::filesystem::directory_entry const &dir: std::filesystem::directory_iterator{path}) {
+    AddLine(dir.path().filename().string());
   }
   return VIMKTOR_OK;
 }
